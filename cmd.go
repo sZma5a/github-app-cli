@@ -14,11 +14,12 @@ import (
 	"github.com/sZma5a/github-app-cli/internal/proxy"
 )
 
-const version = "0.1.0"
+// Set via -ldflags "-X main.version=..."
+var version = "dev"
 
-func run(args []string, stdin io.Reader, stderr io.Writer) (exitCode int) {
+func run(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) (exitCode int) {
 	if len(args) < 2 {
-		printUsage(stderr)
+		printUsage(stdout)
 		return 1
 	}
 
@@ -29,9 +30,9 @@ func run(args []string, stdin io.Reader, stderr io.Writer) (exitCode int) {
 			return 1
 		}
 	case "--version", "-v":
-		fmt.Fprintf(stderr, "gha %s\n", version)
+		fmt.Fprintf(stdout, "gha %s\n", version)
 	case "--help", "-h":
-		printUsage(stderr)
+		printUsage(stdout)
 	default:
 		if err := runProxy(args[1:]); err != nil {
 			fmt.Fprintf(stderr, "error: %v\n", err)
@@ -64,25 +65,31 @@ Configuration is stored in ~/.config/github-app-cli/config.yaml
 func runConfigure(stdin io.Reader, stderr io.Writer) error {
 	reader := bufio.NewReader(stdin)
 
-	fmt.Fprint(stderr, "GitHub App ID: ")
-	appIDStr, _ := reader.ReadString('\n')
-	appIDStr = strings.TrimSpace(appIDStr)
+	appIDStr, err := prompt(reader, stderr, "GitHub App ID: ")
+	if err != nil {
+		return fmt.Errorf("reading App ID: %w", err)
+	}
 	appID, err := strconv.ParseInt(appIDStr, 10, 64)
-	if err != nil {
-		return fmt.Errorf("invalid App ID %q: %w", appIDStr, err)
+	if err != nil || appID <= 0 {
+		return fmt.Errorf("invalid App ID %q: must be a positive integer", appIDStr)
 	}
 
-	fmt.Fprint(stderr, "Installation ID: ")
-	installIDStr, _ := reader.ReadString('\n')
-	installIDStr = strings.TrimSpace(installIDStr)
+	installIDStr, err := prompt(reader, stderr, "Installation ID: ")
+	if err != nil {
+		return fmt.Errorf("reading Installation ID: %w", err)
+	}
 	installID, err := strconv.ParseInt(installIDStr, 10, 64)
-	if err != nil {
-		return fmt.Errorf("invalid Installation ID %q: %w", installIDStr, err)
+	if err != nil || installID <= 0 {
+		return fmt.Errorf("invalid Installation ID %q: must be a positive integer", installIDStr)
 	}
 
-	fmt.Fprint(stderr, "Private Key Path: ")
-	keyPath, _ := reader.ReadString('\n')
-	keyPath = strings.TrimSpace(keyPath)
+	keyPath, err := prompt(reader, stderr, "Private Key Path: ")
+	if err != nil {
+		return fmt.Errorf("reading Private Key Path: %w", err)
+	}
+	if keyPath == "" {
+		return fmt.Errorf("private key path must not be empty")
+	}
 
 	if strings.HasPrefix(keyPath, "~/") {
 		home, err := os.UserHomeDir()
@@ -91,8 +98,12 @@ func runConfigure(stdin io.Reader, stderr io.Writer) error {
 		}
 	}
 
-	if _, err := os.Stat(keyPath); err != nil {
-		return fmt.Errorf("private key file not found: %s", keyPath)
+	info, err := os.Stat(keyPath)
+	if err != nil {
+		return fmt.Errorf("private key file: %w", err)
+	}
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("private key path is not a regular file: %s", keyPath)
 	}
 
 	cfg := &config.Config{
@@ -102,12 +113,21 @@ func runConfigure(stdin io.Reader, stderr io.Writer) error {
 	}
 
 	if err := config.Save(cfg); err != nil {
-		return err
+		return fmt.Errorf("saving config: %w", err)
 	}
 
 	dir, _ := config.Dir()
 	fmt.Fprintf(stderr, "Configuration saved to %s/config.yaml\n", dir)
 	return nil
+}
+
+func prompt(reader *bufio.Reader, w io.Writer, msg string) (string, error) {
+	fmt.Fprint(w, msg)
+	line, err := reader.ReadString('\n')
+	if err != nil && line == "" {
+		return "", fmt.Errorf("unexpected end of input")
+	}
+	return strings.TrimSpace(line), nil
 }
 
 func runProxy(args []string) error {
