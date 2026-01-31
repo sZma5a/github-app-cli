@@ -14,6 +14,15 @@ import (
 	"github.com/sZma5a/github-app-cli/internal/config"
 )
 
+func setupTestEnv(t *testing.T) string {
+	t.Helper()
+	tmp := t.TempDir()
+	t.Setenv("HOME", tmp)
+	t.Setenv("USERPROFILE", tmp)
+	t.Setenv("XDG_CONFIG_HOME", "")
+	return tmp
+}
+
 func runCmd(t *testing.T, args []string, input string) (stdout, stderr string, code int) {
 	t.Helper()
 	var outBuf, errBuf bytes.Buffer
@@ -85,8 +94,7 @@ func TestRun_HelpToStdout_ErrorsToStderr(t *testing.T) {
 }
 
 func TestRun_Configure(t *testing.T) {
-	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	setupTestEnv(t)
 
 	keyPath := generateTestKeyFile(t)
 	input := "12345\n67890\n" + keyPath + "\n"
@@ -115,8 +123,7 @@ func TestRun_Configure(t *testing.T) {
 }
 
 func TestRun_ConfigureInvalidAppID(t *testing.T) {
-	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	setupTestEnv(t)
 
 	_, stderr, code := runCmd(t, []string{"gha", "configure"}, "not-a-number\n")
 	if code != 1 {
@@ -128,8 +135,7 @@ func TestRun_ConfigureInvalidAppID(t *testing.T) {
 }
 
 func TestRun_ConfigureNegativeAppID(t *testing.T) {
-	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	setupTestEnv(t)
 
 	_, stderr, code := runCmd(t, []string{"gha", "configure"}, "-5\n")
 	if code != 1 {
@@ -141,8 +147,7 @@ func TestRun_ConfigureNegativeAppID(t *testing.T) {
 }
 
 func TestRun_ConfigureEOF(t *testing.T) {
-	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	setupTestEnv(t)
 
 	_, stderr, code := runCmd(t, []string{"gha", "configure"}, "")
 	if code != 1 {
@@ -154,8 +159,7 @@ func TestRun_ConfigureEOF(t *testing.T) {
 }
 
 func TestRun_ConfigureMissingKeyFile(t *testing.T) {
-	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	setupTestEnv(t)
 
 	_, stderr, code := runCmd(t, []string{"gha", "configure"}, "1\n2\n/nonexistent/key.pem\n")
 	if code != 1 {
@@ -167,8 +171,7 @@ func TestRun_ConfigureMissingKeyFile(t *testing.T) {
 }
 
 func TestRun_ConfigureKeyPathIsDirectory(t *testing.T) {
-	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	setupTestEnv(t)
 
 	dirPath := t.TempDir()
 	_, stderr, code := runCmd(t, []string{"gha", "configure"}, "1\n2\n"+dirPath+"\n")
@@ -181,8 +184,7 @@ func TestRun_ConfigureKeyPathIsDirectory(t *testing.T) {
 }
 
 func TestRun_ConfigureEmptyKeyPath(t *testing.T) {
-	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	setupTestEnv(t)
 
 	_, stderr, code := runCmd(t, []string{"gha", "configure"}, "1\n2\n\n")
 	if code != 1 {
@@ -194,8 +196,7 @@ func TestRun_ConfigureEmptyKeyPath(t *testing.T) {
 }
 
 func TestRun_ProxyWithoutConfig(t *testing.T) {
-	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	setupTestEnv(t)
 
 	_, stderr, code := runCmd(t, []string{"gha", "pr", "list"}, "")
 	if code != 1 {
@@ -207,8 +208,7 @@ func TestRun_ProxyWithoutConfig(t *testing.T) {
 }
 
 func TestRun_ConfigureTildeExpansion(t *testing.T) {
-	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	tmp := setupTestEnv(t)
 
 	keyDir := filepath.Join(tmp, ".ssh")
 	if err := os.MkdirAll(keyDir, 0o700); err != nil {

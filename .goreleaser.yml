@@ -58,6 +58,22 @@ changelog:
       - "^ci:"
       - "^chore\\(deps\\):"
 
+brews:
+  - name: gha
+    repository:
+      owner: sZma5a
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    directory: Formula
+    homepage: "https://github.com/sZma5a/github-app-cli"
+    description: "Proxy gh CLI commands with GitHub App authentication"
+    license: "MIT"
+    skip_upload: auto
+    test: |
+      system "#{bin}/gha", "--version"
+    install: |
+      bin.install "gha"
+
 release:
   github:
     owner: sZma5a
