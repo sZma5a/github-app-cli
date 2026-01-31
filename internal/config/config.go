@@ -44,7 +44,7 @@ func Load() (*Config, error) {
 	data, err := os.ReadFile(filepath.Join(dir, configFile))
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("configuration not found - run 'github-app-cli configure' first")
+			return nil, fmt.Errorf("configuration not found - run 'gha configure' first")
 		}
 		return nil, fmt.Errorf("reading config: %w", err)
 	}

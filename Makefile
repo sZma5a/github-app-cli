@@ -1,6 +1,6 @@
 .PHONY: build test lint clean
 
-BIN := github-app-cli
+BIN := gha
 
 build:
 	go build -o $(BIN) .

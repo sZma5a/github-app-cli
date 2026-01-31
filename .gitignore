@@ -1,5 +1,5 @@
 # Binaries
-github-app-cli
+gha
 dist/
 *.exe
 *.exe~
