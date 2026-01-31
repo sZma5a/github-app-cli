@@ -17,8 +17,9 @@ GitHub Apps provide fine-grained, scoped permissions — ideal for CI/CD, automa
 Download the latest binary from [Releases](https://github.com/sZma5a/github-app-cli/releases) and place it in your `PATH`.
 
 ```bash
-# Example: Linux amd64
-curl -sL https://github.com/sZma5a/github-app-cli/releases/latest/download/gha_linux_amd64.tar.gz | tar xz
+# Example: Linux amd64 (replace VERSION with the desired release, e.g. 0.1.0)
+VERSION=0.1.0
+curl -sL "https://github.com/sZma5a/github-app-cli/releases/download/v${VERSION}/gha_${VERSION}_linux_amd64.tar.gz" | tar xz
 sudo mv gha /usr/local/bin/
 ```
 
