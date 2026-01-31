@@ -1,0 +1,12 @@
+version: "2"
+
+linters:
+  settings:
+    errcheck:
+      exclude-functions:
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
+        - (io.Closer).Close
+        - (net/http.ResponseWriter).Write
+        - (*encoding/json.Encoder).Encode

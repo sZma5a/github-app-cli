@@ -12,6 +12,12 @@ GitHub Apps provide fine-grained, scoped permissions — ideal for CI/CD, automa
 
 ## Install
 
+### Homebrew (macOS / Linux)
+
+```bash
+brew install sZma5a/tap/gha
+```
+
 ### From GitHub Releases
 
 Download the latest binary from [Releases](https://github.com/sZma5a/github-app-cli/releases) and place it in your `PATH`.

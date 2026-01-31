@@ -3,18 +3,27 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
 
-func TestSaveAndLoad(t *testing.T) {
+func setupTestEnv(t *testing.T) string {
+	t.Helper()
 	tmp := t.TempDir()
 	t.Setenv("HOME", tmp)
+	t.Setenv("USERPROFILE", tmp)
+	t.Setenv("XDG_CONFIG_HOME", "")
+	return tmp
+}
+
+func TestSaveAndLoad(t *testing.T) {
+	setupTestEnv(t)
 
 	want := &Config{
 		AppID:          12345,
 		InstallationID: 67890,
-		PrivateKeyPath: "/tmp/test-key.pem",
+		PrivateKeyPath: filepath.FromSlash("/tmp/test-key.pem"),
 	}
 
 	if err := Save(want); err != nil {
@@ -38,8 +47,7 @@ func TestSaveAndLoad(t *testing.T) {
 }
 
 func TestLoad_NotFound(t *testing.T) {
-	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	setupTestEnv(t)
 
 	_, err := Load()
 	if err == nil {
@@ -87,8 +95,7 @@ func TestLoad_ValidationErrors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tmp := t.TempDir()
-			t.Setenv("HOME", tmp)
+			tmp := setupTestEnv(t)
 
 			dir := filepath.Join(tmp, ".config", configDir)
 			if err := os.MkdirAll(dir, 0o700); err != nil {
@@ -110,8 +117,7 @@ func TestLoad_ValidationErrors(t *testing.T) {
 }
 
 func TestLoad_InvalidYAML(t *testing.T) {
-	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	tmp := setupTestEnv(t)
 
 	dir := filepath.Join(tmp, ".config", configDir)
 	if err := os.MkdirAll(dir, 0o700); err != nil {
@@ -131,8 +137,7 @@ func TestLoad_InvalidYAML(t *testing.T) {
 }
 
 func TestLoad_UnknownField(t *testing.T) {
-	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	tmp := setupTestEnv(t)
 
 	dir := filepath.Join(tmp, ".config", configDir)
 	if err := os.MkdirAll(dir, 0o700); err != nil {
@@ -150,8 +155,7 @@ func TestLoad_UnknownField(t *testing.T) {
 }
 
 func TestSave_CreatesDirectory(t *testing.T) {
-	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	tmp := setupTestEnv(t)
 
 	cfg := &Config{
 		AppID:          1,
@@ -168,23 +172,25 @@ func TestSave_CreatesDirectory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("config file not created: %v", err)
 	}
-	if perm := info.Mode().Perm(); perm != 0o600 {
-		t.Errorf("config file permissions = %o, want 0600", perm)
-	}
 
 	dirPath := filepath.Join(tmp, ".config", configDir)
 	dirInfo, err := os.Stat(dirPath)
 	if err != nil {
 		t.Fatalf("config dir not created: %v", err)
 	}
-	if perm := dirInfo.Mode().Perm(); perm != 0o700 {
-		t.Errorf("config dir permissions = %o, want 0700", perm)
+
+	if runtime.GOOS != "windows" {
+		if perm := info.Mode().Perm(); perm != 0o600 {
+			t.Errorf("config file permissions = %o, want 0600", perm)
+		}
+		if perm := dirInfo.Mode().Perm(); perm != 0o700 {
+			t.Errorf("config dir permissions = %o, want 0700", perm)
+		}
 	}
 }
 
 func TestSave_FixesExistingPermissions(t *testing.T) {
-	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	tmp := setupTestEnv(t)
 
 	configPath := filepath.Join(tmp, ".config", configDir, configFile)
 	if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
@@ -207,14 +213,15 @@ func TestSave_FixesExistingPermissions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if perm := info.Mode().Perm(); perm != 0o600 {
-		t.Errorf("config file permissions after Save = %o, want 0600", perm)
+	if runtime.GOOS != "windows" {
+		if perm := info.Mode().Perm(); perm != 0o600 {
+			t.Errorf("config file permissions after Save = %o, want 0600", perm)
+		}
 	}
 }
 
 func TestSave_NilConfig(t *testing.T) {
-	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	setupTestEnv(t)
 
 	err := Save(nil)
 	if err == nil {
@@ -223,8 +230,7 @@ func TestSave_NilConfig(t *testing.T) {
 }
 
 func TestDir(t *testing.T) {
-	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	tmp := setupTestEnv(t)
 
 	dir, err := Dir()
 	if err != nil {
