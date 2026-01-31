@@ -21,10 +21,10 @@ type options struct {
 	baseURL string
 }
 
-// Option configures auth behaviour (e.g. base URL for testing).
+// Option configures auth behaviour.
 type Option func(*options)
 
-// WithBaseURL overrides the GitHub API base URL.
+// WithBaseURL overrides the GitHub API base URL (used for testing).
 func WithBaseURL(url string) Option {
 	return func(o *options) { o.baseURL = url }
 }
@@ -44,19 +44,14 @@ func GenerateJWT(appID int64, privateKeyPath string) (string, error) {
 		return "", fmt.Errorf("reading private key %s: %w", privateKeyPath, err)
 	}
 
-	block, _ := pem.Decode(keyData)
-	if block == nil {
-		return "", fmt.Errorf("failed to decode PEM block from %s", privateKeyPath)
-	}
-
-	key, err := parsePKCS1OrPKCS8(block.Bytes)
+	key, err := findRSAKey(keyData)
 	if err != nil {
 		return "", err
 	}
 
 	now := time.Now()
 	claims := jwt.RegisteredClaims{
-		IssuedAt:  jwt.NewNumericDate(now.Add(-60 * time.Second)),
+		IssuedAt:  jwt.NewNumericDate(now.Add(-30 * time.Second)),
 		ExpiresAt: jwt.NewNumericDate(now.Add(10 * time.Minute)),
 		Issuer:    strconv.FormatInt(appID, 10),
 	}
@@ -68,6 +63,25 @@ func GenerateJWT(appID int64, privateKeyPath string) (string, error) {
 	}
 
 	return signed, nil
+}
+
+var keyBlockTypes = map[string]bool{
+	"RSA PRIVATE KEY": true,
+	"PRIVATE KEY":     true,
+}
+
+func findRSAKey(pemData []byte) (*rsa.PrivateKey, error) {
+	rest := pemData
+	for {
+		var block *pem.Block
+		block, rest = pem.Decode(rest)
+		if block == nil {
+			return nil, fmt.Errorf("no RSA private key PEM block found")
+		}
+		if keyBlockTypes[block.Type] {
+			return parsePKCS1OrPKCS8(block.Bytes)
+		}
+	}
 }
 
 func parsePKCS1OrPKCS8(der []byte) (*rsa.PrivateKey, error) {
@@ -92,6 +106,8 @@ type installationTokenResponse struct {
 	ExpiresAt time.Time `json:"expires_at"`
 }
 
+const maxResponseBytes = 1 << 20
+
 // GetInstallationToken exchanges a JWT for a GitHub App installation access token.
 func GetInstallationToken(jwtToken string, installationID int64, opts ...Option) (string, error) {
 	o := buildOpts(opts)
@@ -113,7 +129,7 @@ func GetInstallationToken(jwtToken string, installationID int64, opts ...Option)
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes))
 	if err != nil {
 		return "", fmt.Errorf("reading response: %w", err)
 	}
@@ -125,6 +141,10 @@ func GetInstallationToken(jwtToken string, installationID int64, opts ...Option)
 	var tokenResp installationTokenResponse
 	if err := json.Unmarshal(body, &tokenResp); err != nil {
 		return "", fmt.Errorf("parsing token response: %w", err)
+	}
+
+	if tokenResp.Token == "" {
+		return "", fmt.Errorf("GitHub API returned empty token")
 	}
 
 	return tokenResp.Token, nil

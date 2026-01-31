@@ -63,7 +63,7 @@ func generateTestKeyPKCS8(t *testing.T) string {
 }
 
 func TestGenerateJWT(t *testing.T) {
-	keyPath, pubKey := generateTestKey(t)
+	keyPath, privKey := generateTestKey(t)
 
 	token, err := GenerateJWT(12345, keyPath)
 	if err != nil {
@@ -71,7 +71,7 @@ func TestGenerateJWT(t *testing.T) {
 	}
 
 	parsed, err := jwt.Parse(token, func(tok *jwt.Token) (any, error) {
-		return &pubKey.PublicKey, nil
+		return &privKey.PublicKey, nil
 	})
 	if err != nil {
 		t.Fatalf("parsing JWT: %v", err)
@@ -80,6 +80,11 @@ func TestGenerateJWT(t *testing.T) {
 	iss, _ := parsed.Claims.GetIssuer()
 	if iss != "12345" {
 		t.Errorf("issuer = %q, want %q", iss, "12345")
+	}
+
+	iat, _ := parsed.Claims.GetIssuedAt()
+	if iat == nil || time.Since(iat.Time) > 45*time.Second {
+		t.Error("iat should be ~30 seconds in the past")
 	}
 
 	exp, _ := parsed.Claims.GetExpirationTime()
@@ -131,16 +136,25 @@ func TestGetInstallationToken(t *testing.T) {
 			t.Errorf("path = %s, want suffix /app/installations/67890/access_tokens", r.URL.Path)
 		}
 
+		if got := r.Header.Get("Accept"); got != "application/vnd.github+json" {
+			t.Errorf("Accept = %q, want %q", got, "application/vnd.github+json")
+		}
+		if got := r.Header.Get("X-GitHub-Api-Version"); got != "2022-11-28" {
+			t.Errorf("X-GitHub-Api-Version = %q, want %q", got, "2022-11-28")
+		}
+
 		auth := r.Header.Get("Authorization")
 		if !strings.HasPrefix(auth, "Bearer ") {
 			t.Errorf("Authorization = %q, want Bearer prefix", auth)
 		}
 
 		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(map[string]any{
+		if err := json.NewEncoder(w).Encode(map[string]any{
 			"token":      wantToken,
 			"expires_at": time.Now().Add(time.Hour).Format(time.RFC3339),
-		})
+		}); err != nil {
+			t.Fatalf("encoding response: %v", err)
+		}
 	}))
 	defer srv.Close()
 
@@ -166,5 +180,24 @@ func TestGetInstallationToken_APIError(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "401") {
 		t.Errorf("error = %q, want substring %q", err.Error(), "401")
+	}
+}
+
+func TestGetInstallationToken_EmptyToken(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(map[string]any{
+			"token":      "",
+			"expires_at": time.Now().Add(time.Hour).Format(time.RFC3339),
+		})
+	}))
+	defer srv.Close()
+
+	_, err := GetInstallationToken("jwt", 1, WithBaseURL(srv.URL))
+	if err == nil {
+		t.Fatal("expected error for empty token")
+	}
+	if !strings.Contains(err.Error(), "empty token") {
+		t.Errorf("error = %q, want substring %q", err.Error(), "empty token")
 	}
 }
