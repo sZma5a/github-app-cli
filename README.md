@@ -1,7 +1,7 @@
 # gha
 
-[![CI](https://github.com/sZma5a/github-app-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/sZma5a/github-app-cli/actions/workflows/ci.yml)
-[![Release](https://github.com/sZma5a/github-app-cli/actions/workflows/release.yml/badge.svg)](https://github.com/sZma5a/github-app-cli/actions/workflows/release.yml)
+[![CI](https://github.com/haribote-lab/github-app-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/haribote-lab/github-app-cli/actions/workflows/ci.yml)
+[![Release](https://github.com/haribote-lab/github-app-cli/actions/workflows/release.yml/badge.svg)](https://github.com/haribote-lab/github-app-cli/actions/workflows/release.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Proxy `gh` CLI commands with GitHub App authentication. Transparently generates an installation token from your GitHub App credentials and injects it into any `gh` command.
@@ -15,24 +15,24 @@ GitHub Apps provide fine-grained, scoped permissions — ideal for CI/CD, automa
 ### Homebrew (macOS / Linux)
 
 ```bash
-brew install sZma5a/tap/gha
+brew install haribote-lab/tap/gha
 ```
 
 ### From GitHub Releases
 
-Download the latest binary from [Releases](https://github.com/sZma5a/github-app-cli/releases) and place it in your `PATH`.
+Download the latest binary from [Releases](https://github.com/haribote-lab/github-app-cli/releases) and place it in your `PATH`.
 
 ```bash
 # Example: Linux amd64 (replace VERSION with the desired release, e.g. 0.1.0)
 VERSION=0.1.0
-curl -sL "https://github.com/sZma5a/github-app-cli/releases/download/v${VERSION}/gha_${VERSION}_linux_amd64.tar.gz" | tar xz
+curl -sL "https://github.com/haribote-lab/github-app-cli/releases/download/v${VERSION}/gha_${VERSION}_linux_amd64.tar.gz" | tar xz
 sudo mv gha /usr/local/bin/
 ```
 
 ### From Source
 
 ```bash
-go install github.com/sZma5a/github-app-cli@latest
+go install github.com/haribote-lab/github-app-cli@latest
 ```
 
 ## Setup

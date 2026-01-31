@@ -1,4 +1,4 @@
-module github.com/sZma5a/github-app-cli
+module github.com/haribote-lab/github-app-cli
 
 go 1.25.5
 

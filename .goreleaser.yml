@@ -61,11 +61,11 @@ changelog:
 brews:
   - name: gha
     repository:
-      owner: sZma5a
+      owner: haribote-lab
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
     directory: Formula
-    homepage: "https://github.com/sZma5a/github-app-cli"
+    homepage: "https://github.com/haribote-lab/github-app-cli"
     description: "Proxy gh CLI commands with GitHub App authentication"
     license: "MIT"
     skip_upload: auto
@@ -76,7 +76,7 @@ brews:
 
 release:
   github:
-    owner: sZma5a
+    owner: haribote-lab
     name: github-app-cli
   draft: false
   prerelease: auto

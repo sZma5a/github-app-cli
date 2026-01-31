@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sZma5a/github-app-cli/internal/config"
+	"github.com/haribote-lab/github-app-cli/internal/config"
 )
 
 func setupTestEnv(t *testing.T) string {
