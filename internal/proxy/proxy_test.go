@@ -4,12 +4,16 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
 
 func writeFakeGh(t *testing.T, script string) string {
 	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("fake gh shell scripts not supported on Windows")
+	}
 	dir := t.TempDir()
 	path := filepath.Join(dir, "gh")
 	if err := os.WriteFile(path, []byte(script), 0o755); err != nil {

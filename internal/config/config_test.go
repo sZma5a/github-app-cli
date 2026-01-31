@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -171,17 +172,20 @@ func TestSave_CreatesDirectory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("config file not created: %v", err)
 	}
-	if perm := info.Mode().Perm(); perm != 0o600 {
-		t.Errorf("config file permissions = %o, want 0600", perm)
-	}
 
 	dirPath := filepath.Join(tmp, ".config", configDir)
 	dirInfo, err := os.Stat(dirPath)
 	if err != nil {
 		t.Fatalf("config dir not created: %v", err)
 	}
-	if perm := dirInfo.Mode().Perm(); perm != 0o700 {
-		t.Errorf("config dir permissions = %o, want 0700", perm)
+
+	if runtime.GOOS != "windows" {
+		if perm := info.Mode().Perm(); perm != 0o600 {
+			t.Errorf("config file permissions = %o, want 0600", perm)
+		}
+		if perm := dirInfo.Mode().Perm(); perm != 0o700 {
+			t.Errorf("config dir permissions = %o, want 0700", perm)
+		}
 	}
 }
 
@@ -209,8 +213,10 @@ func TestSave_FixesExistingPermissions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if perm := info.Mode().Perm(); perm != 0o600 {
-		t.Errorf("config file permissions after Save = %o, want 0600", perm)
+	if runtime.GOOS != "windows" {
+		if perm := info.Mode().Perm(); perm != 0o600 {
+			t.Errorf("config file permissions after Save = %o, want 0600", perm)
+		}
 	}
 }
 
