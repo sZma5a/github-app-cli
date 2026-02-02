@@ -68,7 +68,7 @@ func TestRun_Help(t *testing.T) {
 	if !strings.Contains(stdout, "gha configure") {
 		t.Errorf("missing configure in help: %s", stdout)
 	}
-	if !strings.Contains(stdout, "gha <gh subcommand>") {
+	if !strings.Contains(stdout, "gha [flags] <gh subcommand>") {
 		t.Errorf("missing proxy usage in help: %s", stdout)
 	}
 }
@@ -251,6 +251,193 @@ func TestRun_ConfigureTildeExpansion(t *testing.T) {
 	}
 	if !filepath.IsAbs(cfg.PrivateKeyPath) {
 		t.Errorf("PrivateKeyPath = %q, want absolute path", cfg.PrivateKeyPath)
+	}
+}
+
+// --- Tests for parseInstallationFlags ---
+
+func TestParseInstallationFlags_InstallationID(t *testing.T) {
+	override, remaining := parseInstallationFlags([]string{"--installation-id", "12345", "pr", "list"})
+	if override.id != 12345 {
+		t.Errorf("id = %d, want 12345", override.id)
+	}
+	if len(remaining) != 2 || remaining[0] != "pr" || remaining[1] != "list" {
+		t.Errorf("remaining = %v, want [pr list]", remaining)
+	}
+}
+
+func TestParseInstallationFlags_InstallationIDEquals(t *testing.T) {
+	override, remaining := parseInstallationFlags([]string{"--installation-id=12345", "pr", "list"})
+	if override.id != 12345 {
+		t.Errorf("id = %d, want 12345", override.id)
+	}
+	if len(remaining) != 2 || remaining[0] != "pr" || remaining[1] != "list" {
+		t.Errorf("remaining = %v, want [pr list]", remaining)
+	}
+}
+
+func TestParseInstallationFlags_Org(t *testing.T) {
+	override, remaining := parseInstallationFlags([]string{"--org", "myorg", "repo", "list"})
+	if override.org != "myorg" {
+		t.Errorf("org = %q, want %q", override.org, "myorg")
+	}
+	if len(remaining) != 2 || remaining[0] != "repo" || remaining[1] != "list" {
+		t.Errorf("remaining = %v, want [repo list]", remaining)
+	}
+}
+
+func TestParseInstallationFlags_OrgEquals(t *testing.T) {
+	override, remaining := parseInstallationFlags([]string{"--org=myorg", "repo", "list"})
+	if override.org != "myorg" {
+		t.Errorf("org = %q, want %q", override.org, "myorg")
+	}
+	if len(remaining) != 2 {
+		t.Errorf("remaining = %v, want [repo list]", remaining)
+	}
+}
+
+func TestParseInstallationFlags_IDTakesPrecedenceOverOrg(t *testing.T) {
+	override, _ := parseInstallationFlags([]string{"--installation-id", "99", "--org", "myorg", "pr", "list"})
+	if override.id != 99 {
+		t.Errorf("id = %d, want 99", override.id)
+	}
+	if override.org != "myorg" {
+		t.Errorf("org = %q, want %q", override.org, "myorg")
+	}
+}
+
+func TestParseInstallationFlags_NoFlags(t *testing.T) {
+	override, remaining := parseInstallationFlags([]string{"pr", "list", "--repo", "foo/bar"})
+	if override.id != 0 {
+		t.Errorf("id = %d, want 0", override.id)
+	}
+	if override.org != "" {
+		t.Errorf("org = %q, want empty", override.org)
+	}
+	if len(remaining) != 4 {
+		t.Errorf("remaining = %v, want [pr list --repo foo/bar]", remaining)
+	}
+}
+
+func TestParseInstallationFlags_InvalidID(t *testing.T) {
+	override, remaining := parseInstallationFlags([]string{"--installation-id", "notanumber", "pr", "list"})
+	if override.id != 0 {
+		t.Errorf("id = %d, want 0 (invalid input ignored)", override.id)
+	}
+	if len(remaining) != 2 {
+		t.Errorf("remaining = %v, want [pr list]", remaining)
+	}
+}
+
+func TestParseInstallationFlags_FlagAtEnd(t *testing.T) {
+	override, remaining := parseInstallationFlags([]string{"pr", "list", "--installation-id"})
+	if override.id != 0 {
+		t.Errorf("id = %d, want 0", override.id)
+	}
+	if len(remaining) != 3 {
+		t.Errorf("remaining = %v, want [pr list --installation-id]", remaining)
+	}
+}
+
+// --- Tests for resolveInstallationFromEnv ---
+
+func TestResolveInstallationFromEnv_ID(t *testing.T) {
+	t.Setenv("GHA_INSTALLATION_ID", "54321")
+	t.Setenv("GHA_ORG", "")
+	override := resolveInstallationFromEnv()
+	if override.id != 54321 {
+		t.Errorf("id = %d, want 54321", override.id)
+	}
+}
+
+func TestResolveInstallationFromEnv_Org(t *testing.T) {
+	t.Setenv("GHA_INSTALLATION_ID", "")
+	t.Setenv("GHA_ORG", "testorg")
+	override := resolveInstallationFromEnv()
+	if override.org != "testorg" {
+		t.Errorf("org = %q, want %q", override.org, "testorg")
+	}
+}
+
+func TestResolveInstallationFromEnv_InvalidID(t *testing.T) {
+	t.Setenv("GHA_INSTALLATION_ID", "bad")
+	t.Setenv("GHA_ORG", "")
+	override := resolveInstallationFromEnv()
+	if override.id != 0 {
+		t.Errorf("id = %d, want 0 (invalid env ignored)", override.id)
+	}
+}
+
+func TestResolveInstallationFromEnv_Empty(t *testing.T) {
+	t.Setenv("GHA_INSTALLATION_ID", "")
+	t.Setenv("GHA_ORG", "")
+	override := resolveInstallationFromEnv()
+	if override.id != 0 || override.org != "" {
+		t.Errorf("expected empty override, got id=%d org=%q", override.id, override.org)
+	}
+}
+
+// --- Tests for resolveInstallation precedence ---
+
+func TestResolveInstallation_FlagIDWins(t *testing.T) {
+	flag := installationOverride{id: 100}
+	env := installationOverride{id: 200}
+	configID := int64(300)
+
+	id, err := resolveInstallation("fake-jwt", flag, env, configID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if id != 100 {
+		t.Errorf("id = %d, want 100 (flag should win)", id)
+	}
+}
+
+func TestResolveInstallation_EnvIDWins(t *testing.T) {
+	flag := installationOverride{}
+	env := installationOverride{id: 200}
+	configID := int64(300)
+
+	id, err := resolveInstallation("fake-jwt", flag, env, configID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if id != 200 {
+		t.Errorf("id = %d, want 200 (env should win over config)", id)
+	}
+}
+
+func TestResolveInstallation_ConfigIDFallback(t *testing.T) {
+	flag := installationOverride{}
+	env := installationOverride{}
+	configID := int64(300)
+
+	id, err := resolveInstallation("fake-jwt", flag, env, configID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if id != 300 {
+		t.Errorf("id = %d, want 300 (config fallback)", id)
+	}
+}
+
+// --- Tests for help text content ---
+
+func TestRun_HelpContainsFlags(t *testing.T) {
+	stdout, _, code := runCmd(t, []string{"gha", "--help"}, "")
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0", code)
+	}
+	for _, want := range []string{
+		"--installation-id",
+		"--org",
+		"GHA_INSTALLATION_ID",
+		"GHA_ORG",
+		"Resolution Order",
+	} {
+		if !strings.Contains(stdout, want) {
+			t.Errorf("help missing %q", want)
+		}
 	}
 }
 
