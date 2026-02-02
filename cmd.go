@@ -12,6 +12,7 @@ import (
 	"github.com/haribote-lab/github-app-cli/internal/auth"
 	"github.com/haribote-lab/github-app-cli/internal/config"
 	"github.com/haribote-lab/github-app-cli/internal/proxy"
+	"github.com/haribote-lab/github-app-cli/internal/update"
 )
 
 // Set via -ldflags "-X main.version=..."
@@ -34,6 +35,7 @@ func run(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) (ex
 	case "--help", "-h":
 		printUsage(stdout)
 	default:
+		checkForUpdate(stderr)
 		if err := runProxy(args[1:]); err != nil {
 			fmt.Fprintf(stderr, "error: %v\n", err)
 			return 1
@@ -131,6 +133,16 @@ func prompt(reader *bufio.Reader, w io.Writer, msg string) (string, error) {
 		return "", fmt.Errorf("unexpected end of input")
 	}
 	return strings.TrimSpace(line), nil
+}
+
+func checkForUpdate(w io.Writer) {
+	dir, err := config.Dir()
+	if err != nil {
+		return
+	}
+	if result := update.Check(version, dir); result != nil {
+		fmt.Fprint(w, update.FormatNotice(result))
+	}
 }
 
 func runProxy(args []string) error {
