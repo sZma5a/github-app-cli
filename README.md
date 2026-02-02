@@ -55,8 +55,10 @@ You will be prompted for:
 | Field | Description |
 |---|---|
 | **App ID** | Your GitHub App's ID (Settings → Developer settings → GitHub Apps) |
-| **Installation ID** | The installation ID for the target org/repo |
+| **Installation ID** | Optional. Press Enter to auto-detect (works when the App has a single installation) |
 | **Private Key Path** | Absolute path to the `.pem` private key file |
+
+If Installation ID is omitted, `gha` automatically resolves it via the GitHub API at runtime. If the App is installed on multiple organizations, you must specify the Installation ID explicitly.
 
 Configuration is saved to `~/.config/github-app-cli/config.yaml` (respects `XDG_CONFIG_HOME`).
 

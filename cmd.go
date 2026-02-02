@@ -74,13 +74,16 @@ func runConfigure(stdin io.Reader, stderr io.Writer) error {
 		return fmt.Errorf("invalid App ID %q: must be a positive integer", appIDStr)
 	}
 
-	installIDStr, err := prompt(reader, stderr, "Installation ID: ")
+	installIDStr, err := prompt(reader, stderr, "Installation ID (empty to auto-detect): ")
 	if err != nil {
 		return fmt.Errorf("reading Installation ID: %w", err)
 	}
-	installID, err := strconv.ParseInt(installIDStr, 10, 64)
-	if err != nil || installID <= 0 {
-		return fmt.Errorf("invalid Installation ID %q: must be a positive integer", installIDStr)
+	var installID int64
+	if installIDStr != "" {
+		installID, err = strconv.ParseInt(installIDStr, 10, 64)
+		if err != nil || installID <= 0 {
+			return fmt.Errorf("invalid Installation ID %q: must be a positive integer", installIDStr)
+		}
 	}
 
 	keyPath, err := prompt(reader, stderr, "Private Key Path: ")
@@ -141,10 +144,38 @@ func runProxy(args []string) error {
 		return fmt.Errorf("generating JWT: %w", err)
 	}
 
-	installToken, err := auth.GetInstallationToken(jwtToken, cfg.InstallationID)
+	installationID := cfg.InstallationID
+	if installationID == 0 {
+		installationID, err = resolveInstallationID(jwtToken)
+		if err != nil {
+			return err
+		}
+	}
+
+	installToken, err := auth.GetInstallationToken(jwtToken, installationID)
 	if err != nil {
 		return fmt.Errorf("getting installation token: %w", err)
 	}
 
 	return proxy.Exec(args, installToken)
+}
+
+func resolveInstallationID(jwtToken string) (int64, error) {
+	installations, err := auth.GetInstallations(jwtToken)
+	if err != nil {
+		return 0, fmt.Errorf("listing installations: %w", err)
+	}
+
+	switch len(installations) {
+	case 0:
+		return 0, fmt.Errorf("no installations found for this GitHub App")
+	case 1:
+		return installations[0].ID, nil
+	default:
+		lines := make([]string, 0, len(installations))
+		for _, inst := range installations {
+			lines = append(lines, fmt.Sprintf("  %d (%s)", inst.ID, inst.Account.Login))
+		}
+		return 0, fmt.Errorf("multiple installations found, set installation_id in config:\n%s", strings.Join(lines, "\n"))
+	}
 }

@@ -101,6 +101,52 @@ func parsePKCS1OrPKCS8(der []byte) (*rsa.PrivateKey, error) {
 	return key, nil
 }
 
+// Installation represents a GitHub App installation.
+type Installation struct {
+	ID      int64 `json:"id"`
+	Account struct {
+		Login string `json:"login"`
+	} `json:"account"`
+}
+
+// GetInstallations lists all installations for the authenticated GitHub App.
+func GetInstallations(jwtToken string, opts ...Option) ([]Installation, error) {
+	o := buildOpts(opts)
+
+	url := fmt.Sprintf("%s/app/installations", o.baseURL)
+
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("creating request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+jwtToken)
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("listing installations: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes))
+	if err != nil {
+		return nil, fmt.Errorf("reading response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("GitHub API error (HTTP %d): %s", resp.StatusCode, string(body))
+	}
+
+	var installations []Installation
+	if err := json.Unmarshal(body, &installations); err != nil {
+		return nil, fmt.Errorf("parsing installations response: %w", err)
+	}
+
+	return installations, nil
+}
+
 type installationTokenResponse struct {
 	Token     string    `json:"token"`
 	ExpiresAt time.Time `json:"expires_at"`

@@ -125,6 +125,75 @@ func TestGenerateJWT_InvalidPEM(t *testing.T) {
 	}
 }
 
+func TestGetInstallations(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Errorf("method = %s, want GET", r.Method)
+		}
+		if r.URL.Path != "/app/installations" {
+			t.Errorf("path = %s, want /app/installations", r.URL.Path)
+		}
+
+		auth := r.Header.Get("Authorization")
+		if !strings.HasPrefix(auth, "Bearer ") {
+			t.Errorf("Authorization = %q, want Bearer prefix", auth)
+		}
+
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode([]map[string]any{
+			{"id": 111, "account": map[string]string{"login": "org-a"}},
+			{"id": 222, "account": map[string]string{"login": "org-b"}},
+		})
+	}))
+	defer srv.Close()
+
+	got, err := GetInstallations("fake-jwt", WithBaseURL(srv.URL))
+	if err != nil {
+		t.Fatalf("GetInstallations: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("len = %d, want 2", len(got))
+	}
+	if got[0].ID != 111 || got[0].Account.Login != "org-a" {
+		t.Errorf("got[0] = %+v, want id=111 login=org-a", got[0])
+	}
+	if got[1].ID != 222 || got[1].Account.Login != "org-b" {
+		t.Errorf("got[1] = %+v, want id=222 login=org-b", got[1])
+	}
+}
+
+func TestGetInstallations_Empty(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("[]"))
+	}))
+	defer srv.Close()
+
+	got, err := GetInstallations("fake-jwt", WithBaseURL(srv.URL))
+	if err != nil {
+		t.Fatalf("GetInstallations: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("len = %d, want 0", len(got))
+	}
+}
+
+func TestGetInstallations_APIError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte(`{"message":"Bad credentials"}`))
+	}))
+	defer srv.Close()
+
+	_, err := GetInstallations("bad-jwt", WithBaseURL(srv.URL))
+	if err == nil {
+		t.Fatal("expected error for 401 response")
+	}
+	if !strings.Contains(err.Error(), "401") {
+		t.Errorf("error = %q, want substring %q", err.Error(), "401")
+	}
+}
+
 func TestGetInstallationToken(t *testing.T) {
 	wantToken := "ghs_test_token_abc123"
 
