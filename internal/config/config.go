@@ -59,8 +59,8 @@ func Load() (*Config, error) {
 	if cfg.AppID <= 0 {
 		return nil, fmt.Errorf("app_id must be a positive integer")
 	}
-	if cfg.InstallationID <= 0 {
-		return nil, fmt.Errorf("installation_id must be a positive integer")
+	if cfg.InstallationID < 0 {
+		return nil, fmt.Errorf("installation_id must not be negative")
 	}
 	if strings.TrimSpace(cfg.PrivateKeyPath) == "" {
 		return nil, fmt.Errorf("private_key_path is required in config")

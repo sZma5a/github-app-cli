@@ -72,14 +72,9 @@ func TestLoad_ValidationErrors(t *testing.T) {
 			wantErr: "app_id must be a positive integer",
 		},
 		{
-			name:    "missing installation_id",
-			yaml:    "app_id: 1\nprivate_key_path: /tmp/k.pem\n",
-			wantErr: "installation_id must be a positive integer",
-		},
-		{
 			name:    "negative installation_id",
 			yaml:    "app_id: 1\ninstallation_id: -5\nprivate_key_path: /tmp/k.pem\n",
-			wantErr: "installation_id must be a positive integer",
+			wantErr: "installation_id must not be negative",
 		},
 		{
 			name:    "missing private_key_path",
@@ -113,6 +108,27 @@ func TestLoad_ValidationErrors(t *testing.T) {
 				t.Errorf("error = %q, want substring %q", err.Error(), tt.wantErr)
 			}
 		})
+	}
+}
+
+func TestLoad_OmittedInstallationID(t *testing.T) {
+	tmp := setupTestEnv(t)
+
+	dir := filepath.Join(tmp, ".config", configDir)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	yml := "app_id: 1\nprivate_key_path: /tmp/k.pem\n"
+	if err := os.WriteFile(filepath.Join(dir, configFile), []byte(yml), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.InstallationID != 0 {
+		t.Errorf("InstallationID = %d, want 0", cfg.InstallationID)
 	}
 }
 

@@ -122,6 +122,29 @@ func TestRun_Configure(t *testing.T) {
 	}
 }
 
+func TestRun_ConfigureAutoDetect(t *testing.T) {
+	setupTestEnv(t)
+
+	keyPath := generateTestKeyFile(t)
+	input := "12345\n\n" + keyPath + "\n"
+
+	_, stderr, code := runCmd(t, []string{"gha", "configure"}, input)
+	if code != 0 {
+		t.Fatalf("exit code = %d, stderr = %s", code, stderr)
+	}
+
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatalf("config.Load: %v", err)
+	}
+	if cfg.AppID != 12345 {
+		t.Errorf("AppID = %d, want 12345", cfg.AppID)
+	}
+	if cfg.InstallationID != 0 {
+		t.Errorf("InstallationID = %d, want 0 (auto-detect)", cfg.InstallationID)
+	}
+}
+
 func TestRun_ConfigureInvalidAppID(t *testing.T) {
 	setupTestEnv(t)
 
