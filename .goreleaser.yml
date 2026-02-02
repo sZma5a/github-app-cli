@@ -58,6 +58,15 @@ changelog:
       - "^ci:"
       - "^chore\\(deps\\):"
 
+nfpms:
+  - package_name: gha
+    formats:
+      - deb
+    maintainer: sZma5a <szma5a@users.noreply.github.com>
+    description: Proxy gh CLI commands with GitHub App authentication
+    license: MIT
+    homepage: https://github.com/haribote-lab/github-app-cli
+
 release:
   github:
     owner: haribote-lab

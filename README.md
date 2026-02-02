@@ -18,12 +18,21 @@ GitHub Apps provide fine-grained, scoped permissions — ideal for CI/CD, automa
 brew install haribote-lab/tap/gha
 ```
 
-### From GitHub Releases
+### Ubuntu / Debian
 
-Download the latest binary from [Releases](https://github.com/haribote-lab/github-app-cli/releases) and place it in your `PATH`.
+Download the `.deb` package from [Releases](https://github.com/haribote-lab/github-app-cli/releases) and install with `dpkg`:
 
 ```bash
-# Example: Linux amd64 (replace VERSION with the desired release, e.g. 0.1.0)
+VERSION=0.1.0
+curl -sLO "https://github.com/haribote-lab/github-app-cli/releases/download/v${VERSION}/gha_${VERSION}_linux_amd64.deb"
+sudo dpkg -i "gha_${VERSION}_linux_amd64.deb"
+```
+
+### From GitHub Releases
+
+Download the binary from [Releases](https://github.com/haribote-lab/github-app-cli/releases) and place it in your `PATH`:
+
+```bash
 VERSION=0.1.0
 curl -sL "https://github.com/haribote-lab/github-app-cli/releases/download/v${VERSION}/gha_${VERSION}_linux_amd64.tar.gz" | tar xz
 sudo mv gha /usr/local/bin/
