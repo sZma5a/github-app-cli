@@ -118,7 +118,9 @@ func TestCheck_StaleCache(t *testing.T) {
 		CheckedAt:     time.Now().Add(-25 * time.Hour),
 	}
 	data, _ := json.Marshal(stale)
-	os.WriteFile(filepath.Join(dir, cacheFile), data, 0o600)
+	if err := os.WriteFile(filepath.Join(dir, cacheFile), data, 0o600); err != nil {
+		t.Fatal(err)
+	}
 
 	result := Check("1.0.0", dir, WithBaseURL(srv.URL))
 	if result == nil {
@@ -136,7 +138,9 @@ func TestCheck_FreshCacheNoUpdate(t *testing.T) {
 		CheckedAt:     time.Now(),
 	}
 	data, _ := json.Marshal(fresh)
-	os.WriteFile(filepath.Join(dir, cacheFile), data, 0o600)
+	if err := os.WriteFile(filepath.Join(dir, cacheFile), data, 0o600); err != nil {
+		t.Fatal(err)
+	}
 
 	result := Check("1.0.0", dir)
 	if result != nil {

@@ -125,7 +125,7 @@ func writeCache(path string, s *state) {
 	if err != nil {
 		return
 	}
-	os.WriteFile(path, data, 0o600)
+	_ = os.WriteFile(path, data, 0o600)
 }
 
 func isNewer(latest, current string) bool {
